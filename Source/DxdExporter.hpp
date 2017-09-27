@@ -16,4 +16,12 @@ namespace Dxd {
 		~DxdExporter();
 		void Export(const char* file_path);
 	};
+	class DxdImporter {
+	private:
+		std::unique_ptr<FileController> fc;
+	public:
+		DxdImporter();
+		~DxdImporter();
+		void Import(const char* file_path);
+	};
 }
