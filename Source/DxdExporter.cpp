@@ -9,8 +9,26 @@ namespace Dxd {
 	void DxdExporter::Export(const char* file_path) {
 		fc->Open(file_path, FileController::OpenMode::WriteBinary);
 		float version = GetVersion();
-		fc->Write("Dxd", 4);
+		char extension[4] = "Dxd";
+		fc->Write(extension, sizeof("Dxd"));
 		fc->Write(&version, 1);
+		int meshCount = model->GetMeshCount();
+		fc->Write(&meshCount, 1);
+		for (int i = 0; i < meshCount; i++) {
+			FL::Mesh* mesh = model->GetMesh(i);
+			int vertexCount = mesh->GetVertexCount();
+			std::vector<Vector3> vertices;
+			for (int j = 0; j < vertexCount; j++) {
+				vertices.push_back(mesh->GetVertex(j));
+			}
+			int normalCount = mesh->GetNormalCount();
+			std::vector<Vector3> normals;
+			for (int j = 0; j < normalCount; j++) {
+				normals.push_back(mesh->GetNormal(j));
+			}
+			int uvCount = mesh->GetUVCount();
+			
+		}
 		fc->Close();
 	}
 

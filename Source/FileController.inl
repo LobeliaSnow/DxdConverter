@@ -40,7 +40,7 @@ namespace Dxd {
 		}
 	}
 	template<typename T>  size_t FileController::Write(T* pointer, size_t count) noexcept {
-		if (!IsOpen() || !(IsWriteMode() && IsAppendMode()))return SIZE_T_MAX;
+		if (!IsOpen() || !(IsWriteMode() || IsAppendMode()))return SIZE_T_MAX;
 		return fwrite(pointer, sizeof T, count, fp);
 	}
 	template<typename T> __forceinline size_t FileController::Read(T* pointer, size_t buffer_size, size_t count) noexcept {
