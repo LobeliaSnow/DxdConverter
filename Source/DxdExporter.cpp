@@ -2,116 +2,61 @@
 #include "DxdExporter.hpp"
 
 namespace Dxd {
-	DxdExporter::DxdExporter(const char* file_path) :model(std::make_unique<FL::Model>(file_path)), fc(std::make_unique<FileController>()) {
+	Mesh::Mesh(FL::Mesh* mesh, std::weak_ptr<FileController> fc) :mesh(mesh), file(fc.lock()) {
+	}
+	Mesh::~Mesh() {
+
+	}
+	bool Mesh::IsExistFile() { return (file.get() && file->IsOpen()); }
+	void Mesh::Export() {
+		if (!IsExistFile())STRICT_THROW("ファイルが開かれていない可能性があります");
+		int indexCount = mesh->GetIndexCount();
+		int uvCount = mesh->GetUVCount();
+		file->Write(&indexCount, 1);
+		std::vector<Vertex> vertices;
+		if (indexCount == uvCount) {
+			vertices.resize(indexCount);
+			//indexとUVの数が同じ、つまり頂点バッファに展開する必要がある
+			for (int i = 0; i < indexCount; i++) {
+				int index = mesh->GetIndexBuffer(i);
+				memcpy_s(&vertices[i].pos, sizeof(Vector4), &mesh->GetVertex(index), sizeof(Vector3));
+				memcpy_s(&vertices[i].normal, sizeof(Vector4), &mesh->GetNormal(index), sizeof(Vector3));
+				memcpy_s(&vertices[i].tex, sizeof(Vector2), &mesh->GetUV(index), sizeof(Vector2));
+			}
+			file->Write(vertices.data(), indexCount);
+		}
+		else STRICT_THROW("初めて見るファイルフォーマットです、この例外メッセージを制作者に連絡してください");
+		file->Write(mesh->GetMaterialName().c_str(), 256);
+	}
+	Material::Material(FL::Material* material, std::weak_ptr<FileController> fc) :material(material), file(fc.lock()) {
+	}
+	Material::~Material() = default;
+	bool Material::IsExistFile() { return (file.get() && file->IsOpen()); }
+	void Material::Export() {
+		if (!IsExistFile())STRICT_THROW("ファイルが開かれていない可能性があります");
+		file->Write(material->GetName().c_str(), 64);
+		file->Write(material->GetTexture(0).c_str(), 256);
+	}
+
+	DxdExporter::DxdExporter(const char* file_path) :model(std::make_unique<FL::Model>(file_path)), fc(std::make_shared<FileController>()) {
 	}
 	DxdExporter::~DxdExporter() = default;
 	float DxdExporter::GetVersion() { return 1.00f; }
 	void DxdExporter::Export(const char* file_path) {
 		fc->Open(file_path, FileController::OpenMode::WriteBinary);
-		float version = GetVersion();
-		char extension[4] = "Dxd";
-		fc->Write(extension, sizeof("Dxd"));
-		fc->Write(&version, 1);
 		int meshCount = model->GetMeshCount();
-		fc->Write(&meshCount, 1);
 		for (int i = 0; i < meshCount; i++) {
-			FL::Mesh* mesh = model->GetMesh(i);
-			int vertexCount = mesh->GetVertexCount();
-			std::vector<Vector3> vertices;
-			for (int j = 0; j < vertexCount; j++) {
-				vertices.push_back(mesh->GetVertex(j));
-			}
-			fc->Write(&vertexCount, 1);
-			fc->Write(vertices.data(), vertexCount);
-
-			int normalCount = mesh->GetNormalCount();
-			std::vector<Vector3> normals;
-			for (int j = 0; j < normalCount; j++) {
-				normals.push_back(mesh->GetNormal(j));
-			}
-			fc->Write(&normalCount, 1);
-			fc->Write(normals.data(), vertexCount);
-
-			int uvCount = mesh->GetUVCount();
-			std::vector<Vector2> uvs;
-			for (int j = 0; j < uvCount; j++) {
-				uvs.push_back(mesh->GetUV(j));
-			}
-			fc->Write(&uvCount, 1);
-			fc->Write(uvs.data(), vertexCount);
-
-			int indexCount = mesh->GetIndexCount();
-			std::vector<int> indices;
-			for (int j = 0; j < indexCount; j++) {
-				indices.push_back(mesh->GetIndexBuffer(j));
-			}
-			fc->Write(&indexCount, 1);
-			fc->Write(indices.data(), vertexCount);
-
-			std::string materialName = mesh->GetMaterialName();
-			fc->Write(materialName.c_str(), 256);
+			std::unique_ptr<Mesh> mesh;
+			mesh = std::make_unique<Mesh>(model->GetMesh(i), fc);
+			mesh->Export();
 		}
-		int materialCount = model->GetMaterialCount();
-		fc->Write(&materialCount, 1);
-		for (int i = 0; i < materialCount; i++) {
-			FL::Material* material = model->GetMaterial(i);
-			std::string materialName = material->GetName();
-			fc->Write(materialName.c_str(), 256);
-
-			std::string textureName = material->GetTexture(0);
-			fc->Write(textureName.c_str(), 256);
+		int materiaCount = model->GetMaterialCount();
+		for (int i = 0; i < materiaCount; i++) {
+			std::unique_ptr<Material> material;
+			material = std::make_unique<Material>(model->GetMaterial(i), fc);
+			material->Export();
 		}
 		fc->Close();
 	}
-	DxdImporter::DxdImporter() :fc(std::make_unique<FileController>()) {}
-	DxdImporter::~DxdImporter() = default;
-	void DxdImporter::Import(const char* file_path) {
-		fc->Open(file_path, FileController::OpenMode::ReadBinary);
-		float version = GetVersion();
-		char extension[4] = "Dxd";
-		fc->Read(extension, sizeof("Dxd"), 1);
-		fc->Read(&version, sizeof(version), 1);
-		int meshCount = -1;
-		fc->Read(&meshCount, sizeof(meshCount), 1);
-		for (int i = 0; i < meshCount; i++) {
-			int vertexCount = -1;
-			fc->Read(&vertexCount, sizeof(vertexCount), 1);
-			std::vector<Vector3> vertices;
-			vertices.resize(vertexCount);
-			fc->Read(vertices.data(), sizeof(Vector3)*vertexCount, 1);
-
-			int normalCount = -1;
-			fc->Read(&normalCount, sizeof(normalCount), 1);
-			std::vector<Vector3> normals;
-			normals.resize(normalCount);
-			fc->Read(normals.data(), sizeof(Vector3)*normalCount, 1);
-
-			int uvCount = -1;
-			fc->Read(&uvCount, sizeof(uvCount), 1);
-			std::vector<Vector2> uvs;
-			uvs.resize(uvCount);
-			fc->Read(uvs.data(), sizeof(Vector2)*uvCount, 1);
-
-			int indexCount = -1;
-			fc->Read(&indexCount, sizeof(indexCount), 1);
-			std::vector<int> indices;
-			indices.resize(indexCount);
-			fc->Read(indices.data(), sizeof(int)*indexCount, 1);
-
-			char materialName[256] = {};
-			fc->Read(materialName, 256, 1);
-		}
-		int materialCount = -1;
-		fc->Read(&materialCount, sizeof(materialCount), 1);
-		for (int i = 0; i < materialCount; i++) {
-			char materialName[256] = {};
-			fc->Read(materialName, 256, 1);
-
-			char textureName[256] = {};
-			fc->Read(textureName, 256, 1);
-		}
-		fc->Close();
-
-	}
-
 }
+//test_stage_3.fbx
