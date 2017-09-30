@@ -16,19 +16,11 @@ namespace Dxd {
 		std::vector<Vertex> vertices;
 		if (indexCount == uvCount) {
 			vertices.resize(indexCount);
-			//indexとUVの数が同じ、つまり頂点バッファに展開する必要がある
-			FL::ReferenceMode referenceMode = mesh->GetReferenceMode();
-			FL::MappingMode mappingMode = mesh->GetMappingMode();
-			if (referenceMode == FL::ReferenceMode::DIRECT)printf("リファレンスモード direct\n");
-			else printf("リファレンスモード index_to_direct\n");
-			if (mappingMode == FL::MappingMode::CONTROL_POINT)printf("マッピングモード control_point\n");
-			else printf("マッピングモード polygon_by_vertex\n");
 			for (int i = 0; i < indexCount; i++) {
 				int index = mesh->GetIndexBuffer(i);
 				memcpy_s(&vertices[i].pos, sizeof(Vector4), &mesh->GetVertex(index), sizeof(Vector3));
 				memcpy_s(&vertices[i].normal, sizeof(Vector4), &mesh->GetNormal(index), sizeof(Vector3));
-				if (referenceMode == FL::ReferenceMode::DIRECT) memcpy_s(&vertices[i].tex, sizeof(Vector2), &mesh->GetUV(i), sizeof(Vector2));
-				else memcpy_s(&vertices[i].tex, sizeof(Vector2), &mesh->GetUV(index), sizeof(Vector2));
+				memcpy_s(&vertices[i].tex, sizeof(Vector2), &mesh->GetUV(i), sizeof(Vector2));
 			}
 			file->Write(vertices.data(), indexCount);
 		}
