@@ -17,11 +17,18 @@ namespace Dxd {
 		if (indexCount == uvCount) {
 			vertices.resize(indexCount);
 			//indexとUVの数が同じ、つまり頂点バッファに展開する必要がある
+			FL::ReferenceMode referenceMode = mesh->GetReferenceMode();
+			FL::MappingMode mappingMode = mesh->GetMappingMode();
+			if (referenceMode == FL::ReferenceMode::DIRECT)printf("リファレンスモード direct\n");
+			else printf("リファレンスモード index_to_direct\n");
+			if (mappingMode == FL::MappingMode::CONTROL_POINT)printf("マッピングモード control_point\n");
+			else printf("マッピングモード polygon_by_vertex\n");
 			for (int i = 0; i < indexCount; i++) {
 				int index = mesh->GetIndexBuffer(i);
 				memcpy_s(&vertices[i].pos, sizeof(Vector4), &mesh->GetVertex(index), sizeof(Vector3));
 				memcpy_s(&vertices[i].normal, sizeof(Vector4), &mesh->GetNormal(index), sizeof(Vector3));
-				memcpy_s(&vertices[i].tex, sizeof(Vector2), &mesh->GetUV(index), sizeof(Vector2));
+				if (referenceMode == FL::ReferenceMode::DIRECT) memcpy_s(&vertices[i].tex, sizeof(Vector2), &mesh->GetUV(i), sizeof(Vector2));
+				else memcpy_s(&vertices[i].tex, sizeof(Vector2), &mesh->GetUV(index), sizeof(Vector2));
 			}
 			file->Write(vertices.data(), indexCount);
 		}
@@ -36,6 +43,12 @@ namespace Dxd {
 		if (!IsExistFile())STRICT_THROW("ファイルが開かれていない可能性があります");
 		file->Write(material->GetName().c_str(), 64);
 		file->Write(material->GetTexture(0).c_str(), 256);
+		Vector3 diffuse = material->GetDiffuse();
+		Vector3 ambient = material->GetAmbient();
+		Vector3 specular = material->GetSpecular();
+		file->Write(&diffuse, 1);
+		file->Write(&ambient, 1);
+		file->Write(&specular, 1);
 	}
 
 	DxdExporter::DxdExporter(const char* file_path) :model(std::make_unique<FL::Model>(file_path)), fc(std::make_shared<FileController>()) {
