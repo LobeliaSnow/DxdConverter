@@ -26,7 +26,7 @@ namespace Dxd {
 			file->Write(vertices.data(), indexCount);
 		}
 		else STRICT_THROW("初めて見るファイルフォーマットです、この例外メッセージを制作者に連絡してください");
-		file->Write(mesh->GetMaterialName().c_str(), 256);
+		file->Write(mesh->GetMaterialName().c_str(), 64);
 	}
 	Material::Material(FL::Material* material, std::weak_ptr<FileController> fc) :material(material), file(fc.lock()) {
 	}
@@ -45,12 +45,14 @@ namespace Dxd {
 	void DxdExporter::Export(const char* file_path) {
 		fc->Open(file_path, FileController::OpenMode::WriteBinary);
 		int meshCount = model->GetMeshCount();
+		fc->Write(&meshCount, 1);
 		for (int i = 0; i < meshCount; i++) {
 			std::unique_ptr<Mesh> mesh;
 			mesh = std::make_unique<Mesh>(model->GetMesh(i), fc);
 			mesh->Export();
 		}
 		int materiaCount = model->GetMaterialCount();
+		fc->Write(&materiaCount, 1);
 		for (int i = 0; i < materiaCount; i++) {
 			std::unique_ptr<Material> material;
 			material = std::make_unique<Material>(model->GetMaterial(i), fc);
