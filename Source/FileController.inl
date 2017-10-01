@@ -48,7 +48,7 @@ namespace Dxd {
 		return fread_s(pointer, buffer_size, buffer_size, count, fp);
 	}
 	template <typename ... Args> __forceinline size_t FileController::Print(const char *format, Args const & ... args) noexcept {
-		if (!IsOpen() || !(IsWriteMode() && IsAppendMode()))return SIZE_T_MAX;
+		if (!IsOpen() || !(IsWriteMode() || IsAppendMode()))return SIZE_T_MAX;
 		return fprintf_s(fp, format, args...);
 	}
 	template <typename ... Args> __forceinline size_t FileController::Scan(const char* pointer, Args const & ... args) noexcept {
