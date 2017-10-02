@@ -28,14 +28,14 @@ namespace Dxd {
 		int clusterCount;
 		//頂点ごとに影響を受けるクラスターのインデックス所持
 		std::vector<std::vector<BoneInfo>> boneInfo;
+		//初期姿勢行列保存用
+		std::vector<DirectX::XMFLOAT4X4> initPoseMatrices;
 		//アニメーションの数
 		int animationCount;
 		//1秒あたりサンプルされるフレーム数
 		int framePerCount;
 		//アニメーションの数->アニメーション名
 		std::vector <std::string> animationName;
-		//初期姿勢行列保存用
-		std::vector<DirectX::XMFLOAT4X4> initPoseMatrices;
 		//アニメーションごとのフレーム総数
 		std::vector<int> frameCount;
 		//アニメーションの数->フレーム数->キーフレーム
@@ -49,6 +49,8 @@ namespace Dxd {
 		Mesh(FL::Mesh* mesh, std::weak_ptr<FileController> fc);
 		~Mesh();
 		void MeshExport();
+		void ClusterExport();
+		void AnimationExport();
 	};
 	class Material {
 	private:

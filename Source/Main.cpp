@@ -12,10 +12,21 @@ int main(int argc, char *argv[]) {
 		std::unique_ptr<Dxd::DxdExporter> exporter = std::make_unique<Dxd::DxdExporter>(filePath);
 		std::cout << "ロード完了" << std::endl;
 		std::cout << "エクスポート開始" << std::endl;
-		exporter->Export("a.dxd");
+		std::string outputPath = Dxd::FilePathControl::GetFilename(filePath);
+		std::string extension = Dxd::FilePathControl::GetExtension(filePath);
+		{
+			std::string serach = "fbx";
+			std::string dxd = "dxd";
+			std::string temp = outputPath;
+			transform(temp.begin(), temp.end(), temp.begin(), tolower);
+			std::string::size_type pos(temp.find(serach));
+			outputPath.replace(pos, serach.length(), dxd);
+		}
+		//pos = outputPath.find(serach, pos + dxd.length());
+		exporter->Export(outputPath.c_str());
 		std::cout << "エクスポート完了" << std::endl;
 		exporter.reset();
-		FL::System::GetInstance()->Finalize();		 
+		FL::System::GetInstance()->Finalize();
 	}
 	catch (const FL::Exception& exception) {
 		exception.BoxMessage();
