@@ -40,8 +40,6 @@ namespace Dxd {
 		file->Write(mesh->GetMaterialName().c_str(), 64);
 		ClusterParser();
 		AnimationTakeParser();
-		printf("parse complete\n");
-		Debug();
 	}
 	//ちょっと怖いのでコメントつけ倒します、後でデバッグする際勘違いが怖いので
 	void Mesh::ClusterParser() {
@@ -124,9 +122,9 @@ namespace Dxd {
 					current = DirectX::XMLoadFloat4x4(&currentPose);
 					//バインドポーズ行列の逆行列と、カレントポーズ行列をかけて事前計算
 					//アニメーションフレームとなる
-					DirectX::XMMATRIX frame = inverseInit*current;
+					DirectX::XMMATRIX frame = current*inverseInit;
 					//保存用の型に変換、受け取りも保存用変数
-					DirectX::XMStoreFloat4x4(&keyFrames[animationIndex][animationIndex][keyFrameIndex], frame);
+					DirectX::XMStoreFloat4x4(&keyFrames[animationIndex][clusterIndex][keyFrameIndex], frame);
 				}
 			}
 		}
