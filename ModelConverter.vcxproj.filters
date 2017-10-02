@@ -16,15 +16,15 @@
     <ClCompile Include="Source\DxdExporter.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="Source\FileController.inl">
-      <Filter>Source</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\DxdExporter.hpp">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\FileController.hpp">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\FileController.inl">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
