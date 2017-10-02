@@ -38,8 +38,8 @@ namespace Dxd {
 		std::vector <std::string> animationName;
 		//アニメーションごとのフレーム総数
 		std::vector<int> frameCount;
-		//アニメーションの数->フレーム数->キーフレーム
-		std::vector<std::vector<DirectX::XMFLOAT4X4>> keyFrames;
+		//アニメーションの数->クラスターの数->フレーム数->キーフレーム
+		std::vector<std::vector<std::vector<DirectX::XMFLOAT4X4>>> keyFrames;
 	private:
 		bool IsExistFile();
 		void ClusterParser();
@@ -50,7 +50,13 @@ namespace Dxd {
 		~Mesh();
 		void MeshExport();
 		void ClusterExport();
-		void AnimationExport();
+		int GetAnimationCount();
+		int GetFrameCount(int index);
+		int GetClusterCount();
+		int GetFramePerCount();
+
+		std::string GetAnimationName(int index);
+		void AnimationExport(std::weak_ptr<FileController> fc, int index);
 	};
 	class Material {
 	private:
