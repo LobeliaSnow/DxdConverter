@@ -52,6 +52,7 @@ namespace Dxd {
 		boneInfo.resize(indexCount);
 		//クラスターの数に合わせる
 		initPoseMatrices.resize(clusterCount);
+		referenceMatrices.resize(clusterCount);
 		//アニメーション数取得 あえて下ではなくてこちらでやっている
 		animationCount = skin->GetCluster(0)->GetAnimationCount();
 		//この先諸データのパース ここ怪しいよ
@@ -78,8 +79,12 @@ namespace Dxd {
 			Matrix temp = cluster->GetInitPoseMatrix();
 			DirectX::XMFLOAT4X4 initPose = {};
 			LoadMatrix(&initPose, temp);
+			Matrix referenceInit = cluster->GetReferenceTransformMatrix();
+			DirectX::XMFLOAT4X4 referenceInitPose = {};
+			LoadMatrix(&referenceInitPose, referenceInit);
 			//保存用変数に初期姿勢を保存
 			initPoseMatrices[i] = initPose;
+			referenceMatrices[i] = referenceInitPose;
 		}
 	}
 	void Mesh::AnimationTakeParser() {
@@ -98,6 +103,8 @@ namespace Dxd {
 			DirectX::XMVECTOR arg = {};
 			//初期姿勢の逆行列を算出
 			DirectX::XMMATRIX inverseInit = DirectX::XMMatrixInverse(&arg, initPose);
+			DirectX::XMMATRIX referenceInverseInit = DirectX::XMLoadFloat4x4(&referenceMatrices[clusterIndex]);
+
 			//この使用しているFL Libraryが1秒あたり何フレームでサンプルしているか取得
 			framePerCount = FL::System::GetInstance()->sampleFramePerCount;
 			//複数アニメーション用にアニメーションの数だけ取得
@@ -114,68 +121,29 @@ namespace Dxd {
 				for (int keyFrameIndex = 0; keyFrameIndex < frameCount[animationIndex]; keyFrameIndex++) {
 					//カレントポーズ行列を取得
 					Matrix ctemp = animation->GetCurrentPoseMatrix(keyFrameIndex);
+					Matrix rtemp = animation->GetReferenceMatrix(keyFrameIndex);
 					DirectX::XMFLOAT4X4 currentPose = {};
 					//行列をDirectXMathの型に入れ込む
 					LoadMatrix(&currentPose, ctemp);
 					DirectX::XMMATRIX current;
 					//計算用の型に移し替え
 					current = DirectX::XMLoadFloat4x4(&currentPose);
+					DirectX::XMFLOAT4X4 referencePose = {};
+					//行列をDirectXMathの型に入れ込む
+					LoadMatrix(&referencePose, rtemp);
+					DirectX::XMMATRIX reference;
+					//計算用の型に移し替え
+					reference = DirectX::XMLoadFloat4x4(&referencePose);
+
 					//バインドポーズ行列の逆行列と、カレントポーズ行列をかけて事前計算
 					//アニメーションフレームとなる
-					DirectX::XMMATRIX frame = current*inverseInit;
+					//疑問点 1つの頂点が複数のボーンから影響を受ける際にこの方式でもよいのか？
+					DirectX::XMMATRIX frame = reference*inverseInit*current*referenceInverseInit;
 					//保存用の型に変換、受け取りも保存用変数
 					DirectX::XMStoreFloat4x4(&keyFrames[animationIndex][clusterIndex][keyFrameIndex], frame);
 				}
 			}
 		}
-	}
-	void Mesh::Debug() {
-		std::unique_ptr<FileController> fc = std::make_unique<FileController>();
-		fc->Open("debug.txt", FileController::OpenMode::Write);
-		fc->Print("animation debug\n");
-		fc->Print("index count %d\n", indexCount);
-		fc->Print("cluster count %d\n", clusterCount);
-
-		for (int i = 0; i < indexCount; i++) {
-			int boneCount = boneInfo[i].size();
-			fc->Print("bone info impact vertex count %d\n", boneCount);
-			for (int j = 0; j < boneCount; j++) {
-				fc->Print("→ cluster index %d\n", boneInfo[i][j].clusterIndex);
-				fc->Print("→ weight %f\n", boneInfo[i][j].weight);
-			}
-		}
-
-		fc->Print("init pose matirces\n");
-		for (int i = 0; i < clusterCount; i++) {
-			for (int row = 0; row < 4; row++) {
-				fc->Print("-> ");
-				for (int column = 0; column < 4; column++) {
-					fc->Print("%f ", initPoseMatrices[i].m[row][column]);
-				}
-				fc->Print("\n");
-			}
-			fc->Print("\n");
-		}
-		fc->Print("frame per sec %d\n", framePerCount);
-		fc->Print("animation count %d\n", animationCount);
-		for (int animationIndex = 0; animationIndex < animationCount; animationIndex++) {
-			fc->Print("%s\n", animationName[animationIndex].c_str());
-			fc->Print("frame count %d\n", frameCount[animationIndex]);
-			for (int clusterIndex = 0; clusterIndex < clusterCount; clusterIndex++) {
-				for (int frameIndex = 0; frameIndex < frameCount[animationIndex]; frameIndex++) {
-					fc->Print("key frame\n");
-					for (int row = 0; row < 4; row++) {
-						fc->Print("-> ");
-						for (int column = 0; column < 4; column++) {
-							fc->Print("%f ", keyFrames[animationIndex][clusterIndex][frameIndex].m[row][column]);
-						}
-						fc->Print("\n");
-					}
-					fc->Print("\n");
-				}
-			}
-		}
-		fc->Close();
 	}
 	void Mesh::ClusterExport() {
 		file->Write(&clusterCount, 1);
@@ -188,11 +156,6 @@ namespace Dxd {
 		}
 		file->Write(initPoseMatrices.data(), clusterCount);
 	}
-	int Mesh::GetAnimationCount() { return animationCount; }
-	int Mesh::GetFrameCount(int index) { return frameCount[index]; }
-	int Mesh::GetClusterCount() { return clusterCount; }
-	int Mesh::GetFramePerCount() { return framePerCount; }
-	std::string Mesh::GetAnimationName(int index) { return animationName[index]; }
 	void Mesh::AnimationExport(std::weak_ptr<FileController> fc, int index) {
 		std::shared_ptr<FileController> f = fc.lock();
 		for (int clusterIndex = 0; clusterIndex < clusterCount; clusterIndex++) {
@@ -201,6 +164,11 @@ namespace Dxd {
 		}
 	}
 
+	int Mesh::GetAnimationCount() { return animationCount; }
+	int Mesh::GetFrameCount(int index) { return frameCount[index]; }
+	int Mesh::GetClusterCount() { return clusterCount; }
+	int Mesh::GetFramePerCount() { return framePerCount; }
+	std::string Mesh::GetAnimationName(int index) { return animationName[index]; }
 	Material::Material(FL::Material* material, std::weak_ptr<FileController> fc) :material(material), file(fc.lock()) {
 	}
 	Material::~Material() = default;
@@ -250,9 +218,15 @@ namespace Dxd {
 			fc->Write(&framePerCount, 1);
 			int frameCount = mesh[0]->GetFrameCount(i);
 			fc->Write(&frameCount, 1);
-			int clusterCount = mesh[0]->GetClusterCount();
-			fc->Write(&clusterCount, 1);
+			fc->Write(&meshCount, 1);
+			//int clusterCount = 0;
+			//for (int i = 0; i < meshCount; i++) {
+			//	clusterCount += mesh[i]->GetClusterCount();
+			//}
+			//fc->Write(&clusterCount, 1);
 			for (int j = 0; j < meshCount; j++) {
+				int clusterCount = mesh[i]->GetClusterCount();
+				fc->Write(&clusterCount, 1);
 				mesh[i]->AnimationExport(fc, i);
 			}
 			fc->Close();

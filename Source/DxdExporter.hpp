@@ -30,6 +30,8 @@ namespace Dxd {
 		std::vector<std::vector<BoneInfo>> boneInfo;
 		//初期姿勢行列保存用
 		std::vector<DirectX::XMFLOAT4X4> initPoseMatrices;
+		std::vector<DirectX::XMFLOAT4X4> referenceMatrices;
+		std::vector<DirectX::XMFLOAT4X4> inverseInitPoseMatrices;
 		//アニメーションの数
 		int animationCount;
 		//1秒あたりサンプルされるフレーム数
